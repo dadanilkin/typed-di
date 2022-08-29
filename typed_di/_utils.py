@@ -32,6 +32,8 @@ def _get_generator_t_or_rise(t: object) -> object:
         case _:
             raise TypeError(f"Unexpected num of generic args for `{t!r}` being found, expected {args_count} arguments")
 
+    assert False  # mypy complains with "No return statement", but match/case above handles all branches
+
 
 def _get_awaitable_t_or_rise(t: object) -> object:
     match get_args(t):

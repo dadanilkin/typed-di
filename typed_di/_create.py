@@ -9,6 +9,7 @@ from typed_di import _contexts, _depends, _utils
 from typed_di._contexts import AppContext, HandlerContext
 from typed_di._depends import Depends
 from typed_di._exceptions import (
+    CreationType,
     DependencyByNameNotFound,
     HandlerScopeDepRequestedFromAppScope,
     ValueFromFactoryAlreadyResolved,
@@ -264,7 +265,7 @@ def _render_cache_already_have_value_in_other_form_error(
 ) -> RuntimeError:
     assert need_action != action_performed
 
-    c_type = "explicit" if explicit else "implicit"
+    c_type: CreationType = "explicit" if explicit else "implicit"
     if need_action:
         return ValueFromFactoryWereRequestedUnresolved(dep_type, dep_or_name, c_type, requested_as, fn)
     else:

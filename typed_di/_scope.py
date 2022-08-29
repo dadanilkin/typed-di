@@ -28,7 +28,8 @@ def _decorate_as_app_scoped(fn: Callable[P, R], /) -> Callable[P, R]:
             return fn(*args, **kwargs)
 
         setattr(wrapper, "__app_scope__", True)
-        return wrapper
+        # There is wired mypy magic happens that's why cast is required
+        return cast(Callable[P, R], wrapper)
 
 
 def scoped(scope: Scope, /) -> Callable[[Callable[P, R]], Callable[P, R]]:

@@ -108,6 +108,7 @@ async def invoke(ctx: AppContext | HandlerContext, fn: Callable[P, Awaitable[R]]
 
 
 if False:
+    from typed_di import RootContext
 
     def inject(fn: Callable[P, Awaitable[R]], /) -> Callable[[RootContext | AppContext | HandlerContext], Awaitable[R]]:
         @functools.wraps(fn)
