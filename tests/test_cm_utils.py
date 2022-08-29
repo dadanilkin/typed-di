@@ -83,6 +83,7 @@ class TestCM:
     @pytest.mark.parametrize(
         "cm, expect_nesting_level",
         [
+            (object, 0),
             (int, 0),
             (ContextManager[int], 1),
             (ContextManager[ContextManager[int]], 2),
@@ -204,6 +205,7 @@ class TestAsyncCM:
     @pytest.mark.parametrize(
         "cm, expect_nesting_level",
         [
+            (object, 0),
             (int, 0),
             (AsyncContextManager[int], 1),
             (AsyncContextManager[AsyncContextManager[int]], 2),
@@ -319,6 +321,7 @@ class TestAwaitable:
     @pytest.mark.parametrize(
         "cm, expect_nesting_level",
         [
+            (object, 0),
             (int, 0),
             # Awaitables
             (Awaitable[int], 1),

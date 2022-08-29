@@ -142,11 +142,6 @@ class TestResolvesDependencies:
         assert res == D(C(B(A("from `create_a` factory"))))
 
 
-class TestCaching:
-    async def test_caches_sync_factory(self):
-        pass
-
-
 class TestLifespans:
     async def test_async(self, root_ctx):
         root_mock = Mock()
