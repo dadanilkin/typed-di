@@ -2,23 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import (
-    final,
-    TypeVar,
-    Generic,
-    ContextManager,
-    Awaitable,
     AsyncContextManager,
-    get_args,
-    cast,
-    TypeGuard,
-    get_origin,
+    Awaitable,
+    Callable,
+    ContextManager,
+    Generic,
     Protocol,
     TypeAlias,
-    Callable,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    get_args,
+    get_origin,
 )
 
 from typing_extensions import assert_never
-
 
 T = TypeVar("T")
 T_cov = TypeVar("T_cov", covariant=True)

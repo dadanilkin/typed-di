@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Literal, TypeAlias, Mapping, Sequence, Iterable
+from typing import Iterable, Literal, Mapping, Sequence, TypeAlias
 
 from typed_di import _depends
 
 
 class Error(Exception):
-    ...
+    pass
 
 
 CreationType: TypeAlias = Literal["explicit", "implicit", "bootstrap", "implicit-or-bootstrap"]

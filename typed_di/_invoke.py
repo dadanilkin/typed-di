@@ -1,12 +1,12 @@
 import functools
 import inspect
-from typing import Callable, Awaitable, ParamSpec, TypeVar, get_type_hints, get_args
+from typing import Awaitable, Callable, ParamSpec, TypeVar, get_args, get_type_hints
 
 from typed_di import _depends
-from typed_di._contexts import RootContext, AppContext, HandlerContext
-from typed_di._depends import Depends
+from typed_di._contexts import AppContext, HandlerContext
 from typed_di._create import CreationContext, create
-from typed_di._exceptions import InvalidInvokableFunction, CreationError, InvokableDependencyError, NestedInvokeError
+from typed_di._depends import Depends
+from typed_di._exceptions import CreationError, InvalidInvokableFunction, InvokableDependencyError, NestedInvokeError
 
 
 @functools.lru_cache(128)

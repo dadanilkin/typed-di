@@ -1,22 +1,22 @@
 import dataclasses
 import inspect
 import itertools
-from typing import TypeVar, Callable, ContextManager, Awaitable, AsyncContextManager, cast
+from typing import AsyncContextManager, Awaitable, Callable, ContextManager, TypeVar, cast
 
 from typing_extensions import assert_never
 
-from typed_di import _depends, _utils, _contexts
+from typed_di import _contexts, _depends, _utils
 from typed_di._contexts import AppContext, HandlerContext
 from typed_di._depends import Depends
-from typed_di._scope import get_factory_scope
-from typed_di._utils import is_runtime_checkable
 from typed_di._exceptions import (
     DependencyByNameNotFound,
-    ValueOfUnexpectedTypeReceived,
     HandlerScopeDepRequestedFromAppScope,
     ValueFromFactoryAlreadyResolved,
     ValueFromFactoryWereRequestedUnresolved,
+    ValueOfUnexpectedTypeReceived,
 )
+from typed_di._scope import get_factory_scope
+from typed_di._utils import is_runtime_checkable
 
 
 class _ByNameLookupError(LookupError):

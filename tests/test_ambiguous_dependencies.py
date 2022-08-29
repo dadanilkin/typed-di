@@ -1,12 +1,13 @@
 import dataclasses
-import re
-from typing import ContextManager, Awaitable, AsyncContextManager
+from typing import AsyncContextManager, Awaitable, ContextManager
 
-import pytest
-
-from tests.utils import ComparableDepends
-from typed_di import Depends, invoke, create
-from typed_di._exceptions import ValueFromFactoryWereRequestedUnresolved, ValueFromFactoryAlreadyResolved
+from tests.utils import ComparableDepends, raises_match_by_val
+from typed_di import Depends, create, invoke
+from typed_di._exceptions import (
+    InvokableDependencyError,
+    ValueFromFactoryAlreadyResolved,
+    ValueFromFactoryWereRequestedUnresolved,
+)
 
 
 @dataclasses.dataclass
@@ -85,16 +86,19 @@ class TestForCM:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryWereRequestedUnresolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryWereRequestedUnresolved(
+                    Depends[Foo],
+                    ComparableDepends(create_cm),
+                    "explicit",
+                    Depends[ContextManager[Foo]],
+                    create_cm,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Foo],
-            ComparableDepends(create_cm),
-            "explicit",
-            Depends[ContextManager[Foo]],
-            create_cm,
-        )
 
     async def test_rejects_values_requested_twice_in_different_forms_transitive(self, handler_ctx):
         async def dep(cm_from_callable: Depends[ContextManager[Foo]] = Depends(create_cm)) -> None:
@@ -106,16 +110,19 @@ class TestForCM:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryWereRequestedUnresolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryWereRequestedUnresolved(
+                    Depends[Foo],
+                    ComparableDepends(create_cm),
+                    "explicit",
+                    Depends[ContextManager[Foo]],
+                    create_cm,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Foo],
-            ComparableDepends(create_cm),
-            "explicit",
-            Depends[ContextManager[Foo]],
-            create_cm,
-        )
 
     async def test_rejects_values_requested_twice_in_different_forms_transitive_v2(self, handler_ctx):
         async def dep(
@@ -128,16 +135,19 @@ class TestForCM:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryAlreadyResolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryAlreadyResolved(
+                    Depends[ContextManager[Foo]],
+                    ComparableDepends(create_cm),
+                    "explicit",
+                    Depends[Foo],
+                    create_cm,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[ContextManager[Foo]],
-            ComparableDepends(create_cm),
-            "explicit",
-            Depends[Foo],
-            create_cm,
-        )
 
 
 class TestForAsyncCM:
@@ -163,16 +173,19 @@ class TestForAsyncCM:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryWereRequestedUnresolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryWereRequestedUnresolved(
+                    Depends[Foo],
+                    ComparableDepends(create_async_cm),
+                    "explicit",
+                    Depends[AsyncContextManager[Foo]],
+                    create_async_cm,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Foo],
-            ComparableDepends(create_async_cm),
-            "explicit",
-            Depends[AsyncContextManager[Foo]],
-            create_async_cm,
-        )
 
     async def test_rejects_values_requested_twice_in_different_forms_transitive(self, handler_ctx):
         async def dep(async_cm_from_callable: Depends[AsyncContextManager[Foo]] = Depends(create_async_cm)) -> None:
@@ -184,16 +197,19 @@ class TestForAsyncCM:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryWereRequestedUnresolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryWereRequestedUnresolved(
+                    Depends[Foo],
+                    ComparableDepends(create_async_cm),
+                    "explicit",
+                    Depends[AsyncContextManager[Foo]],
+                    create_async_cm,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Foo],
-            ComparableDepends(create_async_cm),
-            "explicit",
-            Depends[AsyncContextManager[Foo]],
-            create_async_cm,
-        )
 
     async def test_rejects_values_requested_twice_in_different_forms_transitive_v2(self, handler_ctx):
         async def dep(
@@ -207,16 +223,19 @@ class TestForAsyncCM:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryAlreadyResolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryAlreadyResolved(
+                    Depends[AsyncContextManager[Foo]],
+                    ComparableDepends(create_async_cm),
+                    "explicit",
+                    Depends[Foo],
+                    create_async_cm,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[AsyncContextManager[Foo]],
-            ComparableDepends(create_async_cm),
-            "explicit",
-            Depends[Foo],
-            create_async_cm,
-        )
 
 
 class TestForAwaitable:
@@ -243,16 +262,19 @@ class TestForAwaitable:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryWereRequestedUnresolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryWereRequestedUnresolved(
+                    Depends[Foo],
+                    ComparableDepends(create_async),
+                    "explicit",
+                    Depends[Awaitable[Foo]],
+                    create_async,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Foo],
-            ComparableDepends(create_async),
-            "explicit",
-            Depends[Awaitable[Foo]],
-            create_async,
-        )
 
     async def test_rejects_values_requested_twice_in_different_forms_transitive(self, handler_ctx):
         async def dep(awaitable_from_callable: Depends[Awaitable[Foo]] = Depends(create_async)) -> None:
@@ -264,16 +286,19 @@ class TestForAwaitable:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryWereRequestedUnresolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryWereRequestedUnresolved(
+                    Depends[Foo],
+                    ComparableDepends(create_async),
+                    "explicit",
+                    Depends[Awaitable[Foo]],
+                    create_async,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Foo],
-            ComparableDepends(create_async),
-            "explicit",
-            Depends[Awaitable[Foo]],
-            create_async,
-        )
 
     async def test_rejects_values_requested_twice_in_different_forms_transitive_v2(self, handler_ctx):
         async def dep(val_from_awaitable: Depends[Foo] = Depends(create_async)) -> None:
@@ -284,13 +309,16 @@ class TestForAwaitable:
         ) -> None:
             ...
 
-        with pytest.raises(ValueFromFactoryAlreadyResolved) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                ValueFromFactoryAlreadyResolved(
+                    Depends[Awaitable[Foo]],
+                    ComparableDepends(create_async),
+                    "explicit",
+                    Depends[Foo],
+                    create_async,
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (
-            Depends[Awaitable[Foo]],
-            ComparableDepends(create_async),
-            "explicit",
-            Depends[Foo],
-            create_async,
-        )

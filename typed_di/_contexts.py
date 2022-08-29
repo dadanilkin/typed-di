@@ -3,17 +3,7 @@ from __future__ import annotations
 import abc
 import contextlib
 from contextlib import AsyncExitStack
-from typing import (
-    final,
-    Mapping,
-    Callable,
-    Generic,
-    TypeVar,
-    AsyncContextManager,
-    overload,
-    AsyncIterator,
-    TypeAlias,
-)
+from typing import AsyncContextManager, AsyncIterator, Callable, Generic, Mapping, TypeAlias, TypeVar, final, overload
 
 from typing_extensions import assert_never
 

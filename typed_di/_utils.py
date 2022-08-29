@@ -1,8 +1,8 @@
 import contextlib
 import inspect
-from collections.abc import Generator, AsyncGenerator, Iterator, AsyncIterator, Awaitable, Coroutine
-from types import FunctionType, CodeType
-from typing import get_origin, Callable, get_type_hints, get_args, ContextManager, AsyncContextManager, Container
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Coroutine, Generator, Iterator
+from types import CodeType, FunctionType
+from typing import AsyncContextManager, Callable, Container, ContextManager, get_args, get_origin, get_type_hints
 
 
 def _get_iterator_t_or_rise(t: object) -> object:

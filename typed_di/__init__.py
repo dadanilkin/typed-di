@@ -41,11 +41,23 @@ So, generalizing above statements, consider take extra care of:
 
 from typing import TYPE_CHECKING
 
-from typed_di._contexts import RootContext, AppContext, HandlerContext, enter_next_scope
+from typed_di._contexts import AppContext, HandlerContext, RootContext, enter_next_scope
 from typed_di._create import create
 from typed_di._depends import Depends
+from typed_di._exceptions import (
+    CreationError,
+    DependencyByNameNotFound,
+    Error,
+    HandlerScopeDepRequestedFromAppScope,
+    InvalidInvokableFunction,
+    InvokableDependencyError,
+    InvokeError,
+    ValueFromFactoryAlreadyResolved,
+    ValueFromFactoryWereRequestedUnresolved,
+    ValueOfUnexpectedTypeReceived,
+)
 from typed_di._invoke import invoke, validate_invokable, validated
-from typed_di._scope import scoped, get_factory_scope
+from typed_di._scope import get_factory_scope, scoped
 
 
 def _change_obj_module() -> None:
@@ -59,6 +71,16 @@ def _change_obj_module() -> None:
         invoke,
         validate_invokable,
         validated,
+        Error,
+        InvokeError,
+        InvokableDependencyError,
+        InvalidInvokableFunction,
+        CreationError,
+        DependencyByNameNotFound,
+        HandlerScopeDepRequestedFromAppScope,
+        ValueFromFactoryWereRequestedUnresolved,
+        ValueFromFactoryAlreadyResolved,
+        ValueOfUnexpectedTypeReceived,
     ):
         v.__module__ = __package__
 
@@ -68,7 +90,7 @@ del _change_obj_module
 
 
 if TYPE_CHECKING:
-    from typing import ContextManager, Awaitable, AsyncContextManager
+    from typing import AsyncContextManager, Awaitable, ContextManager
 
     def different_factories_example() -> None:
         class Foo:

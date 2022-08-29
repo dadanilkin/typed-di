@@ -2,21 +2,19 @@ import contextlib
 import copy
 import dataclasses
 import re
-from typing import (
-    ContextManager,
-    AsyncIterator,
-    Iterator,
-    AsyncContextManager,
-    Protocol,
-    runtime_checkable,
-)
-from unittest.mock import Mock, AsyncMock, call, MagicMock
+from typing import AsyncContextManager, AsyncIterator, ContextManager, Iterator, Protocol, runtime_checkable
+from unittest.mock import AsyncMock, MagicMock, Mock, call
 
 import pytest
 
-from tests.utils import ComparableDepends
-from typed_di import Depends, invoke, RootContext, enter_next_scope, create, scoped
-from typed_di._exceptions import ValueOfUnexpectedTypeReceived, HandlerScopeDepRequestedFromAppScope
+from tests.utils import ComparableDepends, raises_match_by_val
+from typed_di import Depends, RootContext, create, enter_next_scope, invoke, scoped
+from typed_di._exceptions import (
+    HandlerScopeDepRequestedFromAppScope,
+    InvokableDependencyError,
+    NestedInvokeError,
+    ValueOfUnexpectedTypeReceived,
+)
 
 
 @dataclasses.dataclass
@@ -411,10 +409,19 @@ class TestBootstrapValues:
 
         async with enter_next_scope(root_ctx) as app_ctx:
             async with enter_next_scope(app_ctx) as handler_ctx:
-                with pytest.raises(ValueOfUnexpectedTypeReceived) as exc_info:
+                with raises_match_by_val(
+                    InvokableDependencyError(
+                        fn,
+                        ValueOfUnexpectedTypeReceived(
+                            Depends[Bar],
+                            "b",
+                            "bootstrap",
+                            Bar,
+                            Foo,
+                        ),
+                    ),
+                ):
                     await create(handler_ctx, Depends[None], Depends(fn))
-
-            assert exc_info.value.args == (Depends[Bar], "b", "bootstrap", Bar, Foo)
 
         assert cb.mock_calls == []
 
@@ -430,7 +437,7 @@ class TestBootstrapValues:
             with pytest.raises(
                 TypeError,
                 match=re.escape(
-                    "Type `list[int]` of dependency `typed_di.Depends[list[int]]` is not runtime checkable"
+                    "Type `list[int]` of dependency `typed_di.Depends[list[int]]` is not runtime-checkable"
                 ),
             ):
                 await invoke(app_ctx, fn)
@@ -453,7 +460,7 @@ class TestBootstrapValues:
             with pytest.raises(
                 TypeError,
                 match=re.compile(
-                    r"Type `.*Proto` of dependency `typed_di.Depends\[.*Proto\]` is not runtime checkable"
+                    r"Type `.*Proto` of dependency `typed_di.Depends\[.*Proto\]` is not runtime-checkable"
                 ),
             ):
                 await invoke(app_ctx, fn)
@@ -495,10 +502,19 @@ class TestImplicitFactories:
             ...
 
         async with enter_next_scope(app_ctx, implicit_factories={"foo": create_bar}) as handler_ctx:
-            with pytest.raises(ValueOfUnexpectedTypeReceived) as exc_info:
+            with raises_match_by_val(
+                InvokableDependencyError(
+                    fn,
+                    ValueOfUnexpectedTypeReceived(
+                        Depends[Foo],
+                        "foo",
+                        "implicit",
+                        Foo,
+                        Bar,
+                    ),
+                ),
+            ):
                 await invoke(handler_ctx, fn)
-
-            assert exc_info.value.args == (Depends[Foo], "foo", "implicit", Foo, Bar)
 
     async def test_invokes_implicit_factory_on_handler_level(self):
         root_ctx = RootContext()
@@ -567,10 +583,20 @@ class TestScopingRules:
         ) -> tuple[str, int]:
             return a_dep(), h_dep()
 
-        with pytest.raises(HandlerScopeDepRequestedFromAppScope) as exc_info:
+        with raises_match_by_val(
+            NestedInvokeError(
+                fn,
+                InvokableDependencyError(
+                    app_dep,
+                    HandlerScopeDepRequestedFromAppScope(
+                        Depends[int],
+                        ComparableDepends(handler_dep),
+                        "explicit",
+                    ),
+                ),
+            )
+        ):
             await invoke(handler_ctx, fn)
-
-        assert exc_info.value.args == (Depends[int], ComparableDepends(handler_dep), "explicit")
 
     async def test_rejects_handler_scope_dep_with_app_ctx(self, app_ctx):
         cb = Mock()
@@ -578,13 +604,24 @@ class TestScopingRules:
         async def fn(foo: Depends[Foo] = Depends(sync_foo)) -> None:
             cb()
 
-        with pytest.raises(HandlerScopeDepRequestedFromAppScope) as exc_info:
+        with raises_match_by_val(
+            InvokableDependencyError(
+                fn,
+                HandlerScopeDepRequestedFromAppScope(
+                    Depends[Foo],
+                    ComparableDepends(sync_foo),
+                    "explicit",
+                ),
+            )
+        ):
             await invoke(app_ctx, fn)
 
-        assert exc_info.value.args == (Depends[Foo], ComparableDepends(sync_foo), "explicit")
-
-    async def test_creating_handler_level_dep_on_app_context_is_forbidden(self, app_ctx):
-        with pytest.raises(HandlerScopeDepRequestedFromAppScope) as exc_info:
+    async def test_rejects_handler_scope_dep_with_app_ctx_via_create(self, app_ctx):
+        with raises_match_by_val(
+            HandlerScopeDepRequestedFromAppScope(
+                Depends[Foo],
+                ComparableDepends(sync_foo),
+                "explicit",
+            )
+        ):
             await create(app_ctx, Depends[Foo], Depends(sync_foo))
-
-        assert exc_info.value.args == (Depends[Foo], ComparableDepends(sync_foo), "explicit")

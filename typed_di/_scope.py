@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import TypeVar, Callable, TypeAlias, Literal, ParamSpec, Awaitable, cast
+from typing import Awaitable, Callable, Literal, ParamSpec, TypeAlias, TypeVar, cast
 
 Scope: TypeAlias = Literal["app", "handler"]
 

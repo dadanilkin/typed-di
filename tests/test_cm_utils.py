@@ -1,29 +1,28 @@
 import contextlib
 import sys
-import warnings
 from functools import wraps
 from typing import (
-    ContextManager,
     AsyncContextManager,
-    Generic,
-    TypeVar,
-    Iterator,
-    Generator,
-    AsyncIterator,
     AsyncGenerator,
+    AsyncIterator,
     Awaitable,
+    ContextManager,
     Coroutine,
+    Generator,
+    Generic,
+    Iterator,
+    TypeVar,
 )
 
 import pytest
 
 from typed_di._utils import (
-    cm_factory_count_nesting_levels,
-    cm_count_nesting_levels,
     async_cm_count_nesting_levels,
     async_cm_factory_count_nesting_levels,
     awaitable_count_nesting_levels,
     awaitable_factory_count_nesting_levels,
+    cm_count_nesting_levels,
+    cm_factory_count_nesting_levels,
 )
 
 
