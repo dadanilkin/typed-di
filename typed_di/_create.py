@@ -90,9 +90,9 @@ async def create_from_implicit_factory_cached(
 def create_from_bootstrap_values(
     ctx: AppContext | HandlerContext, dep_type: type[Depends[T]], expect_type: type[T], name: str, /
 ) -> T:
-    root_ctx = _contexts.get_root_ctx(ctx)
+    bootstrap_values = _contexts.get_bootstrap_values(ctx)
     try:
-        val = root_ctx._bootstrap_values[name]
+        val = bootstrap_values[name]
     except KeyError as exc:
         raise _ByNameLookupError(name) from exc
 
@@ -162,6 +162,15 @@ async def create_from_factory(
 ) -> tuple[T, bool]:
     from typed_di._invoke import resolve_fn_deps
 
+    # Check if fn were overridden
+    override_factories = _contexts.get_override_factories(ctx)
+    try:
+        fn_overridden = fn
+        # This is truly unsafe, no mypy errors here
+        fn = cast(_depends.AnyFactory[T], override_factories[fn])
+    except KeyError:
+        fn_overridden = None
+
     if fn in creation_ctx.factories_in_stack:
         it = iter(creation_ctx.factories_in_stack.keys())
         for f in it:
@@ -182,6 +191,8 @@ async def create_from_factory(
         case "handler" if isinstance(ctx, HandlerContext):
             exit_stack = _contexts.get_handler_exit_stack(ctx)
         case "handler":
+            # This branch only possible if the function were called directly, since `create_from_factory_cached`
+            #  performs exactly same check
             raise HandlerScopeDepRequestedFromAppScope(dep_type, dep_or_name, "explicit" if explicit else "implicit")
         case _:
             assert_never(scope)
@@ -194,21 +205,21 @@ async def create_from_factory(
     creation_ctx.prev = fn
     creation_ctx.factories_in_stack[fn] = None
     try:
-        fn_args = await resolve_fn_deps(ctx, fn, creation_ctx)
-
+        # All checks done, now it's time to call factory
+        fn_args = await resolve_fn_deps(ctx, fn, creation_ctx, fn_overridden)
         val: T | ContextManager[T] | Awaitable[T] | AsyncContextManager[T] = fn(**fn_args)
-        if isinstance(val, Awaitable) and _dep_need_await(fn, dep_type):
-            return cast(T, await val), True
-        elif isinstance(val, ContextManager) and _dep_need_enter(fn, dep_type):
-            return cast(T, exit_stack.enter_context(val)), True
-        elif isinstance(val, AsyncContextManager) and _dep_need_aenter(fn, dep_type):
-            return cast(T, await exit_stack.enter_async_context(val)), True
-        else:
-            return cast(T, val), False
-
     finally:
         creation_ctx.prev = prev_factory
         del creation_ctx.factories_in_stack[fn]
+
+    if isinstance(val, Awaitable) and _dep_need_await(fn, dep_type):
+        return cast(T, await val), True
+    elif isinstance(val, ContextManager) and _dep_need_enter(fn, dep_type):
+        return cast(T, exit_stack.enter_context(val)), True
+    elif isinstance(val, AsyncContextManager) and _dep_need_aenter(fn, dep_type):
+        return cast(T, await exit_stack.enter_async_context(val)), True
+    else:
+        return cast(T, val), False
 
 
 def _decide_need_action(n: int, fn: Callable[..., object], dep_type: type[Depends[object]]) -> bool:
@@ -251,6 +262,8 @@ def get_runtime_checkable_type(dep_type: type[Depends[T]]) -> type[T]:
         raise TypeError(f"Type `{inspect.formatannotation(type_)}` of dependency `{dep_type}` is not a simple type")
     if not is_runtime_checkable(type_):
         raise TypeError(f"Type `{inspect.formatannotation(type_)}` of dependency `{dep_type}` is not runtime-checkable")
+
+    # should be error, since `(type[T] | object) & type === type[T] & type | object & type  === type[T] | type === type`
     return type_
 
 

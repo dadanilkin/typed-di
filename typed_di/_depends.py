@@ -92,10 +92,6 @@ class Depends(Generic[T_cov]):
         return dep
 
 
-def from_value(val: T) -> Depends[T]:
-    return Depends.resolved(val)
-
-
 def is_dep(val: object) -> TypeGuard[type[Depends[object]]]:
     origin = get_origin(val)
     return isinstance(origin, type) and issubclass(origin, Depends)

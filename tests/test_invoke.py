@@ -337,7 +337,7 @@ class TestScopingRules:
         res = await invoke(handler_ctx, fn)
         assert res == (1024, "1024")
 
-    async def test_rejects_app_depends_on_handler(self, handler_ctx):
+    async def test_rejects_app_depends_on_handler_dep(self, handler_ctx):
         @scoped("handler")
         def handler_dep() -> int:
             return 1024

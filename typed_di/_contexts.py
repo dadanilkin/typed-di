@@ -168,8 +168,8 @@ def check_context_entered(ctx: AppContext | HandlerContext) -> None:
     raise RuntimeError(f"Attempt to operate on unentered context `{type(ctx).__qualname__}`")
 
 
-def get_root_ctx(ctx: AppContext | HandlerContext) -> RootContext:
-    c: AppContext | HandlerContext | RootContext = ctx
+def get_root_ctx(ctx: RootContext | AppContext | HandlerContext) -> RootContext:
+    c = ctx
     while not isinstance(c, RootContext):
         c = c._prev_ctx
 
@@ -197,6 +197,18 @@ def get_app_exit_stack(ctx: AppContext | HandlerContext) -> AsyncExitStack:
 
 def get_handler_exit_stack(ctx: HandlerContext) -> AsyncExitStack:
     return ctx._exit_stack
+
+
+def get_bootstrap_values(ctx: RootContext | AppContext | HandlerContext) -> Mapping[str, object]:
+    root_ctx = get_root_ctx(ctx)
+    return root_ctx._bootstrap_values
+
+
+def get_override_factories(
+    ctx: RootContext | AppContext | HandlerContext,
+) -> Mapping[Callable[..., object], Callable[..., object]]:
+    root_ctx = get_root_ctx(ctx)
+    return root_ctx._override_factories
 
 
 def lookup_implicit_factory(ctx: AppContext | HandlerContext, name: str) -> Callable[..., object] | None:

@@ -24,7 +24,7 @@ async def handler_ctx(app_ctx):
 
 @pytest.fixture(autouse=True, scope="session")
 def make_di_exceptions_comparable():
-    def new_eq(self, other: object) -> bool | object:
+    def new_eq(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
         return other.args == self.args

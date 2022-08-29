@@ -10,7 +10,7 @@ from typed_di._exceptions import CreationError, InvalidInvokableFunction, Invoka
 
 
 @functools.lru_cache(128)
-def _validate_invokable(fn: Callable[..., object]) -> Exception | None:
+def _validate_invokable(fn: Callable[..., object]) -> dict[str, list[str]] | None:
     sig = inspect.signature(fn)
     if isinstance(fn, type):
         annotations = get_type_hints(fn.__init__)
@@ -47,14 +47,14 @@ def _validate_invokable(fn: Callable[..., object]) -> Exception | None:
             errs.append((arg_name, arg_errs))
 
     if errs:
-        return InvalidInvokableFunction(fn, dict(errs))
+        return dict(errs)
     return None
 
 
-def validate_invokable(factory: Callable[..., object]) -> None:
-    validation_exc = _validate_invokable(factory)
+def validate_invokable(fn: Callable[..., object], fn_overridden: object | None = None) -> None:
+    validation_exc = _validate_invokable(fn)
     if validation_exc:
-        raise validation_exc
+        raise InvalidInvokableFunction(fn, validation_exc, fn_overridden=fn_overridden)
 
 
 C = TypeVar("C", bound=Callable[..., object])
@@ -70,7 +70,11 @@ R = TypeVar("R")
 
 
 async def resolve_fn_deps(
-    ctx: AppContext | HandlerContext, fn: Callable[P, object], creation_ctx: CreationContext, /
+    ctx: AppContext | HandlerContext,
+    fn: Callable[P, object],
+    creation_ctx: CreationContext,
+    fn_overridden: object | None = None,
+    /,
 ) -> dict[str, Depends[object]]:  # impossible to make it typed right now
     validate_invokable(fn)
 
@@ -92,11 +96,11 @@ async def resolve_fn_deps(
             else:
                 dep_val = await create(ctx, annotations[arg_name], param.default, _creation_ctx=creation_ctx)
         except CreationError as exc:
-            raise InvokableDependencyError(fn, exc) from exc
+            raise InvokableDependencyError(fn, exc, fn_overridden=fn_overridden) from exc
         except (NestedInvokeError, InvalidInvokableFunction, InvokableDependencyError) as exc:
-            raise NestedInvokeError(fn, exc)
+            raise NestedInvokeError(fn, exc, fn_overridden=fn_overridden)
 
-        sub_deps[arg_name] = _depends.from_value(dep_val)
+        sub_deps[arg_name] = Depends.resolved(dep_val)
 
     return sub_deps
 

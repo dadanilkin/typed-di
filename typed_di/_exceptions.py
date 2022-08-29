@@ -79,14 +79,17 @@ class ValueFromFactoryWereRequestedUnresolved(CreationError, RuntimeError):
 
 
 class InvokeError(Error):
-    def __init__(self, invokable: object, *args: object) -> None:
-        super().__init__(invokable, *args)
+    def __init__(self, invokable: object, *args: object, fn_overridden: object | None = None) -> None:
+        super().__init__(invokable, *(args + (fn_overridden,) if fn_overridden else ()))
         self.invokable = invokable
+        self.fn_overridden = fn_overridden
 
 
 class InvalidInvokableFunction(InvokeError, ValueError):
-    def __init__(self, invokable: object, args_errs: Mapping[str, Sequence[str]]) -> None:
-        super().__init__(invokable, args_errs)
+    def __init__(
+        self, invokable: object, args_errs: Mapping[str, Sequence[str]], fn_overridden: object | None = None
+    ) -> None:
+        super().__init__(invokable, args_errs, fn_overridden=fn_overridden)
         self.args_errs = args_errs
 
     def __repr__(self) -> str:
@@ -101,13 +104,16 @@ class InvalidInvokableFunction(InvokeError, ValueError):
 
 class NestedInvokeError(InvokeError, RuntimeError):
     def __init__(
-        self, invokable: object, invoke_err: InvokableDependencyError | NestedInvokeError | InvalidInvokableFunction
+        self,
+        invokable: object,
+        invoke_err: InvokableDependencyError | NestedInvokeError | InvalidInvokableFunction,
+        fn_overridden: object | None = None,
     ) -> None:
-        super().__init__(invokable, invoke_err)
+        super().__init__(invokable, invoke_err, fn_overridden=fn_overridden)
         self.invoke_err = invoke_err
 
 
 class InvokableDependencyError(InvokeError, RuntimeError):
-    def __init__(self, invokable: object, dep_err: CreationError) -> None:
-        super().__init__(invokable, dep_err)
+    def __init__(self, invokable: object, dep_err: CreationError, fn_overridden: object | None = None) -> None:
+        super().__init__(invokable, dep_err, fn_overridden=fn_overridden)
         self.dep_err = dep_err
