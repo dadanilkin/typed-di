@@ -1,70 +1,20 @@
 import contextlib
-import copy
 import dataclasses
-import re
-from typing import AsyncContextManager, AsyncIterator, ContextManager, Iterator, Protocol, runtime_checkable
+from typing import AsyncIterator, Iterator
 from unittest.mock import AsyncMock, MagicMock, Mock, call
 
-import pytest
-
+from tests.shared import Foo, async_cm_foo, async_foo, cm_foo, sync_foo
 from tests.utils import ComparableDepends, raises_match_by_val
-from typed_di import Depends, RootContext, create, enter_next_scope, invoke, scoped
-from typed_di._exceptions import (
+from typed_di import (
+    Depends,
     HandlerScopeDepRequestedFromAppScope,
     InvokableDependencyError,
     NestedInvokeError,
-    ValueOfUnexpectedTypeReceived,
+    create,
+    enter_next_scope,
+    invoke,
+    scoped,
 )
-
-
-@dataclasses.dataclass
-class Foo:
-    val: str
-
-
-class Bar:
-    ...
-
-
-def sync_foo() -> Foo:
-    return Foo("sync")
-
-
-def cm_foo() -> ContextManager[Foo]:
-    @contextlib.contextmanager
-    def cm() -> Iterator[Foo]:
-        yield Foo("cm")
-
-    return cm()
-
-
-async def async_foo() -> Foo:
-    return Foo("async")
-
-
-def async_cm_foo() -> AsyncContextManager[Foo]:
-    @contextlib.asynccontextmanager
-    async def cm() -> AsyncIterator[Foo]:
-        yield Foo("async-cm")
-
-    return cm()
-
-
-@pytest.fixture
-def root_ctx():
-    return RootContext()
-
-
-@pytest.fixture
-async def app_ctx(root_ctx):
-    async with enter_next_scope(root_ctx) as app_ctx:
-        yield app_ctx
-
-
-@pytest.fixture
-async def handler_ctx(app_ctx):
-    async with enter_next_scope(app_ctx) as handler_ctx:
-        yield handler_ctx
 
 
 class TestResolvesDependencies:
@@ -367,183 +317,6 @@ class TestLifespans:
                 assert (await invoke(handler_ctx2, fn)) is dep_val
 
             assert (await invoke(handler_ctx1, fn)) is dep_val
-
-
-class TestBootstrapValues:
-    async def test_receives_in_app_scope(self):
-        root_ctx = RootContext(b1=Foo("b1"), b2=Foo("b2"))
-
-        async def fn(b1: Depends[Foo], b2: Depends[Foo]) -> tuple[Foo, Foo]:
-            return b1(), b2()
-
-        async with enter_next_scope(root_ctx) as app_ctx:
-            res = await invoke(app_ctx, fn)
-            assert res == (Foo("b1"), Foo("b2"))
-
-    async def test_receives_in_handler_scope(self):
-        root_ctx = RootContext(b1=Foo("b1"), b2=Foo("b2"))
-
-        async def fn(b1: Depends[Foo], b2: Depends[Foo]) -> tuple[Foo, Foo]:
-            return b1(), b2()
-
-        async with enter_next_scope(root_ctx) as app_ctx:
-            async with enter_next_scope(app_ctx) as handler_ctx:
-                res = await invoke(handler_ctx, fn)
-                assert res == (Foo("b1"), Foo("b2"))
-
-    async def test_provided_value_is_not_type_of_requested(self):
-        class Bar:
-            pass
-
-        cb = Mock()
-
-        root_ctx = RootContext(b=Foo("b1"))
-
-        async def fn(b: Depends[Bar]) -> None:
-            cb(b())
-
-        async with enter_next_scope(root_ctx) as app_ctx:
-            async with enter_next_scope(app_ctx) as handler_ctx:
-                with raises_match_by_val(
-                    InvokableDependencyError(
-                        fn,
-                        ValueOfUnexpectedTypeReceived(
-                            Depends[Bar],
-                            "b",
-                            "bootstrap",
-                            Bar,
-                            Foo,
-                        ),
-                    ),
-                ):
-                    await create(handler_ctx, Depends[None], Depends(fn))
-
-        assert cb.mock_calls == []
-
-    async def test_requested_type_is_not_trivial_for_generic(self, app_ctx):
-        cb = Mock()
-
-        root_ctx = RootContext(b=Foo("b1"))
-
-        async def fn(b: Depends[list[int]]) -> None:
-            cb()
-
-        async with enter_next_scope(root_ctx) as app_ctx:
-            with pytest.raises(
-                TypeError,
-                match=re.escape(
-                    "Type `list[int]` of dependency `typed_di.Depends[list[int]]` is not runtime-checkable"
-                ),
-            ):
-                await invoke(app_ctx, fn)
-
-        assert cb.mock_calls == []
-
-    async def test_requested_type_is_not_trivial_for_rt_protocol(self, app_ctx):
-        @runtime_checkable
-        class Proto(Protocol):
-            ...
-
-        cb = Mock()
-
-        root_ctx = RootContext(b=Foo("b1"))
-
-        async def fn(b: Depends[Proto]) -> None:
-            cb()
-
-        async with enter_next_scope(root_ctx) as app_ctx:
-            with pytest.raises(
-                TypeError,
-                match=re.compile(
-                    r"Type `.*Proto` of dependency `typed_di.Depends\[.*Proto\]` is not runtime-checkable"
-                ),
-            ):
-                await invoke(app_ctx, fn)
-
-        assert cb.mock_calls == []
-
-
-class TestImplicitFactories:
-    async def test_invokes_implicit_factory_on_app_level(self):
-        root_ctx = RootContext()
-
-        async def fn(
-            sync_foo: Depends[Foo], cm_foo: Depends[Foo], async_foo: Depends[Foo], async_cm_foo: Depends[Foo]
-        ) -> tuple[Foo, Foo, Foo, Foo]:
-            return sync_foo(), cm_foo(), async_foo(), async_cm_foo()
-
-        sync_foo_ = scoped("app")(sync_foo)
-        cm_foo_ = scoped("app")(cm_foo)
-        async_foo_ = scoped("app")(async_foo)
-        async_cm_foo_ = scoped("app")(async_cm_foo)
-
-        async with enter_next_scope(
-            root_ctx,
-            implicit_factories={
-                "sync_foo": sync_foo_,
-                "cm_foo": cm_foo_,
-                "async_foo": async_foo_,
-                "async_cm_foo": async_cm_foo_,
-            },
-        ) as app_scope:
-            res = await invoke(app_scope, fn)
-            assert res == (Foo("sync"), Foo("cm"), Foo("async"), Foo("async-cm"))
-
-    async def test_validates_factory_return_type(self, app_ctx):
-        def create_bar() -> Bar:
-            return Bar()
-
-        async def fn(foo: Depends[Foo]) -> None:
-            ...
-
-        async with enter_next_scope(app_ctx, implicit_factories={"foo": create_bar}) as handler_ctx:
-            with raises_match_by_val(
-                InvokableDependencyError(
-                    fn,
-                    ValueOfUnexpectedTypeReceived(
-                        Depends[Foo],
-                        "foo",
-                        "implicit",
-                        Foo,
-                        Bar,
-                    ),
-                ),
-            ):
-                await invoke(handler_ctx, fn)
-
-    async def test_invokes_implicit_factory_on_handler_level(self):
-        root_ctx = RootContext()
-
-        async def fn(
-            sync_foo: Depends[Foo], cm_foo: Depends[Foo], async_foo: Depends[Foo], async_cm_foo: Depends[Foo]
-        ) -> tuple[Foo, Foo, Foo, Foo]:
-            return sync_foo(), cm_foo(), async_foo(), async_cm_foo()
-
-        async with enter_next_scope(root_ctx) as app_ctx:
-            async with enter_next_scope(
-                app_ctx,
-                implicit_factories={
-                    "sync_foo": sync_foo,
-                    "cm_foo": cm_foo,
-                    "async_foo": async_foo,
-                    "async_cm_foo": async_cm_foo,
-                },
-            ) as handler_ctx:
-                res = await invoke(handler_ctx, fn)
-                assert res == (Foo("sync"), Foo("cm"), Foo("async"), Foo("async-cm"))
-
-    async def test_rejects_app_level_implicit_factory_on_handler_scope(self, app_ctx):
-        sync_foo_ = scoped("app")(copy.copy(sync_foo))
-
-        with pytest.raises(
-            ValueError,
-            match=(
-                "It is forbidden to use app scope implicit factories "
-                "in handler context, use them while entering app scope"
-            ),
-        ):
-            async with enter_next_scope(app_ctx, implicit_factories={"sync_foo": sync_foo_}):
-                ...
 
 
 class TestScopingRules:
