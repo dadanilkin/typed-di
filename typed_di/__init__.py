@@ -1,44 +1,3 @@
-"""
-# False-negative rejections
-
-Some expressions may be correct from typing view, but will be rejected by dependency-factory consistency
-analyzer due to required complex analyze and rarity of such cases
-
-## Awaitable-like objects
-
-1. Any custom awaitables, generic or not
-
-    a. Simply annotated
-
-        ```python
-        class CustomAwaitable:
-            def __await__(self) -> Generator[..., ..., Awaitable[int]]: ...
-
-        def factory() -> CustomAwaitable: ...
-        # Will be rejected despite the fact that `CustomAwaitable` is consistent with `Awaitable[Awaitable[int]]`
-        create(ctx, Depends[Awaitable[Awaitable[int]]], Depends(factory))
-        ```
-
-    b. Generic
-
-        ```python
-        class GenericAwaitable(Generic[T1, T2, T3]):
-            def __await__(self) -> Generator[..., ..., T2]: ...
-
-        def factory() -> GenericAwaitable[None, Awaitable[int], None]:: ...
-        # Will be rejected despite the fact that `GenericAwaitable[None, Awaitable[int], None]` is consistent
-        #  with `Awaitable[Awaitable[int]]`
-        create(ctx, Depends[Awaitable[Awaitable[int]]], Depends(factory))
-        ```
-
-So, generalizing above statements, consider take extra care of:
-
-...
-
-3. Decorated coroutine-functions, which returns T (where T: !Awaitable)
-
-"""
-
 from typing import TYPE_CHECKING
 
 from typed_di._contexts import AppContext, HandlerContext, RootContext, enter_next_scope
@@ -58,41 +17,36 @@ from typed_di._exceptions import (
     ValueOfUnexpectedTypeReceived,
 )
 from typed_di._invoke import invoke, validate_invokable, validated
+from typed_di._partial import partial
 from typed_di._scope import get_factory_scope, scoped
 
-
-def _change_obj_module() -> None:
-    for v in (
-        RootContext,
-        AppContext,
-        HandlerContext,
-        enter_next_scope,
-        create,
-        Depends,
-        invoke,
-        validate_invokable,
-        validated,
-        Error,
-        InvokeError,
-        InvokableDependencyError,
-        InvalidInvokableFunction,
-        CreationError,
-        NestedInvokeError,
-        DependencyByNameNotFound,
-        HandlerScopeDepRequestedFromAppScope,
-        ValueFromFactoryWereRequestedUnresolved,
-        ValueFromFactoryAlreadyResolved,
-        ValueOfUnexpectedTypeReceived,
-    ):
-        v.__module__ = __package__
-
-
-_change_obj_module()
-del _change_obj_module
+__all__ = [
+    "RootContext",
+    "AppContext",
+    "HandlerContext",
+    "enter_next_scope",
+    "create",
+    "Depends",
+    "invoke",
+    "validate_invokable",
+    "validated",
+    "Error",
+    "InvokeError",
+    "InvokableDependencyError",
+    "InvalidInvokableFunction",
+    "CreationError",
+    "NestedInvokeError",
+    "DependencyByNameNotFound",
+    "HandlerScopeDepRequestedFromAppScope",
+    "ValueFromFactoryWereRequestedUnresolved",
+    "ValueFromFactoryAlreadyResolved",
+    "ValueOfUnexpectedTypeReceived",
+    "partial",
+]
 
 
 if TYPE_CHECKING:
-    from typing import AsyncContextManager, Awaitable, ContextManager
+    from typing import AsyncContextManager, Awaitable, ContextManager, Iterable, Mapping
 
     def different_factories_example() -> None:
         class Foo:
@@ -158,3 +112,46 @@ if TYPE_CHECKING:
             foo_wrong_from_async_cm: Depends[Foo] = Depends(bar_async_cm),  # type: ignore[arg-type]
         ) -> int:
             ...
+
+    async def partial_function(ctx: HandlerContext) -> None:
+        class Foo:
+            ...
+
+        class Bar:
+            ...
+
+        async def fn(
+            pa1: int,
+            pa2: str,
+            /,
+            dep1: Depends[Foo],
+            pok1: Mapping[object, object],
+            *,
+            ko1: Iterable[object],
+            dep2: Depends[Bar],
+        ) -> Bar:
+            ...
+
+        await partial(fn)(
+            ctx,
+            int(),
+            str(),
+            {},
+            ko1=[],
+        )
+        await partial(fn)(
+            ctx,
+            int(),
+            str(),
+            pok1={},
+            ko1=[],
+        )
+
+        await partial(fn)(
+            ctx,
+            int(),
+            str(),
+            pok1={},
+            ko1=[],
+            unexpected_arg=10,  # mypy should rise error, but it's not still typed
+        )

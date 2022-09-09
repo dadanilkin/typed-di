@@ -81,7 +81,9 @@ async def test_requested_type_is_not_trivial_for_generic(app_ctx):
     async with enter_next_scope(root_ctx) as app_ctx:
         with pytest.raises(
             TypeError,
-            match=re.escape("Type `list[int]` of dependency `typed_di.Depends[list[int]]` is not runtime-checkable"),
+            match=re.escape(
+                "Type `list[int]` of dependency `typed_di._depends.Depends[list[int]]` is not runtime-checkable"
+            ),
         ):
             await invoke(app_ctx, fn)
 
@@ -103,7 +105,9 @@ async def test_requested_type_is_not_trivial_for_rt_protocol(app_ctx):
     async with enter_next_scope(root_ctx) as app_ctx:
         with pytest.raises(
             TypeError,
-            match=re.compile(r"Type `.*Proto` of dependency `typed_di.Depends\[.*Proto\]` is not runtime-checkable"),
+            match=re.compile(
+                r"Type `.*Proto` of dependency `typed_di._depends.Depends\[.*Proto\]` is not runtime-checkable"
+            ),
         ):
             await invoke(app_ctx, fn)
 

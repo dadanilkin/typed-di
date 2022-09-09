@@ -3,7 +3,7 @@ import dataclasses
 from typing import AsyncContextManager, AsyncIterator, ContextManager, Iterator
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Foo:
     val: str
 

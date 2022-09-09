@@ -5,6 +5,7 @@ import pytest
 from _pytest._code import ExceptionInfo
 
 from typed_di import Depends
+from typed_di._depends import Resolved
 
 T = TypeVar("T")
 
@@ -12,6 +13,12 @@ T = TypeVar("T")
 class ComparableDepends(Depends[T], Generic[T]):
     def __eq__(self, other):
         return isinstance(other, Depends) and other._state == self._state
+
+    @staticmethod
+    def resolved(val: T) -> Depends[T]:
+        d = ComparableDepends(lambda: None)
+        d._state = Resolved(val)
+        return d
 
 
 @contextlib.contextmanager

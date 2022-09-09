@@ -77,16 +77,11 @@ class Depends(Generic[T_cov]):
         return self._state.value
 
     def __repr__(self) -> str:
-        match self._state:
-            case Resolved(val):
-                return f"Depends({val!r})"
-            case Unresolved(factory):
-                return f"Depends({factory!r})"
-            case _:
-                assert_never(self._state)
+        return f"<Depends state={self._state!r}>"
 
     @staticmethod
     def resolved(val: T) -> Depends[T]:
+        # `cls(...)` makes mypy mad
         dep = Depends(lambda: val)
         dep._state = Resolved(val)
         return dep
