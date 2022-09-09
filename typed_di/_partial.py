@@ -168,6 +168,7 @@ def partial(fn: Callable[..., Awaitable[RT]], /) -> Partialized[RT]:
     makes new signature and annotations, so `inspect.signature` and `typing.get_type_hints` will catch the changes.
 
     TODO: make mypy plugin, which will handle signature of partialized functions
+    TODO: make decorator able to delay annotations resolving
 
     :param fn: function to partialize
     :return: partialized function
@@ -206,6 +207,8 @@ def partial(fn: Callable[..., Awaitable[RT]], /) -> Partialized[RT]:
         [ctx_param] + non_di_params,
         return_annotation=annotations["return"],
     )
-    wrapper.__annotations__ = {param.name: annotations[param.name] for param in non_di_params}
+    wrapper.__annotations__ = {param.name: annotations[param.name] for param in non_di_params} | {
+        _CTX_PARAM_NAME: AppContext | HandlerContext
+    }
 
     return wrapper
