@@ -17,8 +17,6 @@ from typing import (
     get_origin,
 )
 
-from typing_extensions import assert_never
-
 T = TypeVar("T")
 T_cov = TypeVar("T_cov", covariant=True)
 

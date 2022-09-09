@@ -9,7 +9,6 @@ from typed_di import (
     Depends,
     HandlerScopeDepRequestedFromAppScope,
     InvokableDependencyError,
-    InvokeError,
     NestedInvokeError,
     RootContext,
     enter_next_scope,
