@@ -136,7 +136,8 @@ class AppContext(_BaseNonRootContext[RootContext]):
         *,
         _used_internally: bool = False,
     ) -> None:
-        super().__init__(root_ctx, implicit_factories, used_internally=_used_internally)
+        implicit_factories_ = implicit_factories | {"app_ctx": _scope.scoped("app")(lambda: self)}
+        super().__init__(root_ctx, implicit_factories_, used_internally=_used_internally)
 
 
 HT = TypeVar("HT", bound="HandlerContext")
@@ -158,7 +159,8 @@ class HandlerContext(_BaseNonRootContext[AppContext]):
                 "use them while entering app scope"
             )
 
-        super().__init__(app_ctx, implicit_factories, used_internally=_used_internally)
+        implicit_factories_ = implicit_factories | {"handler_ctx": lambda: self}
+        super().__init__(app_ctx, implicit_factories_, used_internally=_used_internally)
 
 
 def check_context_entered(ctx: AppContext | HandlerContext) -> None:

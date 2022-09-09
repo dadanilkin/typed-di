@@ -9,8 +9,16 @@ from typed_di._depends import Depends
 from typed_di._exceptions import CreationError, InvalidInvokableFunction, InvokableDependencyError, NestedInvokeError
 
 
+def _is_lambda(fn: Callable[..., object], /) -> bool:
+    try:
+        # Dirty check, since there is no any special type or flags for lambdas
+        return "<lambda>" == fn.__name__
+    except AttributeError:
+        return False
+
+
 @functools.lru_cache(128)
-def _validate_invokable(fn: Callable[..., object]) -> dict[str, list[str]] | None:
+def _validate_invokable(fn: Callable[..., object], /) -> dict[str, list[str]] | None:
     sig = inspect.signature(fn)
     if isinstance(fn, type):
         annotations = get_type_hints(fn.__init__)
@@ -20,7 +28,8 @@ def _validate_invokable(fn: Callable[..., object]) -> dict[str, list[str]] | Non
         return_type = annotations.get("return")
 
     errs: list[tuple[str, list[str]]] = []
-    if return_type is None:
+    # All functions must have return annotation, this rule is relaxed for lambdas
+    if return_type is None and not _is_lambda(fn):
         errs.append(("", [f"Function `{fn!r}` do not have annotation for it return value"]))
 
     for arg_name, param in sig.parameters.items():

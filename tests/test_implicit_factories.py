@@ -3,7 +3,9 @@ import pytest
 from tests.shared import Bar, Foo, async_cm_foo, async_foo, cm_foo, sync_foo
 from tests.utils import raises_match_by_val
 from typed_di import (
+    AppContext,
     Depends,
+    HandlerContext,
     InvokableDependencyError,
     RootContext,
     ValueOfUnexpectedTypeReceived,
@@ -96,3 +98,31 @@ async def test_rejects_app_level_implicit_factory_on_handler_scope(app_ctx):
     ):
         async with enter_next_scope(app_ctx, implicit_factories={"sync_foo": sync_foo_}):
             ...
+
+
+async def test_app_ctx_accesable_as_implicit_factory(app_ctx):
+    async def fn(app_ctx: Depends[AppContext]) -> AppContext:
+        return app_ctx()
+
+    res = await invoke(app_ctx, fn)
+    assert res is app_ctx
+
+
+async def test_app_ctx_accesable_as_implicit_factory_in_app_scope_dep(app_ctx):
+    @scoped("app")
+    async def dep(app_ctx: Depends[AppContext]) -> AppContext:
+        return app_ctx()
+
+    async def fn(d: Depends[AppContext] = Depends(dep)) -> AppContext:
+        return d()
+
+    res = await invoke(app_ctx, fn)
+    assert res is app_ctx
+
+
+async def test_handler_ctx_accesable_as_implicit_factory(handler_ctx):
+    async def fn(handler_ctx: Depends[HandlerContext]) -> None:
+        return handler_ctx()
+
+    res = await invoke(handler_ctx, fn)
+    assert res is handler_ctx
