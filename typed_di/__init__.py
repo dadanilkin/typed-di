@@ -42,6 +42,8 @@ __all__ = [
     "ValueFromFactoryAlreadyResolved",
     "ValueOfUnexpectedTypeReceived",
     "partial",
+    "scoped",
+    "get_factory_scope",
 ]
 
 
