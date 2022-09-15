@@ -285,3 +285,5 @@ BASE_AN = {"__ctx__": AppContext | HandlerContext}
 )
 def test_partialized_fn_annotations(fn, annotations):
     assert get_type_hints(partial(fn)) == annotations
+
+

@@ -20,6 +20,7 @@ from typed_di._invoke import invoke, validate_invokable, validated
 from typed_di._partial import partial
 from typed_di._scope import get_factory_scope, scoped
 
+
 __all__ = [
     "RootContext",
     "AppContext",
@@ -155,5 +156,5 @@ if TYPE_CHECKING:
             str(),
             pok1={},
             ko1=[],
-            unexpected_arg=10,  # mypy should rise error, but it's not still typed
+            unexpected_arg=10,  # type: ignore[call-arg]  # Unexpected keyword argument "unexpected_arg"
         )

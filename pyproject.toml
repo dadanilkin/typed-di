@@ -53,6 +53,8 @@ ignore_missing_imports = true
 show_error_codes = true
 namespace_packages = true
 
+plugins = "typed_di.mypy_plugin:plugin"
+
 [[tool.mypy.overrides]]
 module = "tests.*"
 ignore_errors = true
